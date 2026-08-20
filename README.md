@@ -1,6 +1,6 @@
 # Norah Cyber Defense Lab
 
-NCDL is a practical Cyber Defense and SOC home lab built to develop and document Windows security monitoring, Wazuh detection engineering, alert investigation, and evidence-based reporting.
+NCDL is a practical Cyber Defense and SOC home lab built to develop and document network and Active Directory security, centralized Windows monitoring with Wazuh, detection engineering, alert investigation, and evidence-based reporting.
 
 > **Current status: Core infrastructure and telemetry operational / Detection validation is next**
 >
