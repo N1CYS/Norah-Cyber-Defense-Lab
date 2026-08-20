@@ -1,5 +1,5 @@
 # Investigations
 
-**Current status: No investigations completed.**
+**Status: Planned for NCDL v1 - no end-to-end investigation completed yet.**
 
-This area will contain sanitized SOC and threat-hunting case records: scope, hypothesis, exact queries, data sources, UTC timeline, observations, competing explanations, conclusion, limitations, ATT&CK mapping, and linked evidence. See the planned [investigation workflow](../docs/ARCHITECTURE.md#soc-investigation-workflow).
+This directory will contain the NCDL v1 SOC investigation: scope, initial hypothesis, exact Wazuh queries or filters, UTC timeline, observations, competing explanations, conclusion, limitations, supported ATT&CK mapping, and linked evidence. See the planned [investigation standard](../docs/ARCHITECTURE.md#investigation-standard).

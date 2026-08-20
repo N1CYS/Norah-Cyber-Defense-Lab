@@ -1,76 +1,88 @@
 # Norah Cyber Defense Lab
 
-An enterprise-style cyber defense home lab designed to demonstrate SOC analysis, detection engineering, Active Directory security, network monitoring, threat hunting, and DFIR through reproducible, evidence-backed work.
+NCDL is a practical Cyber Defense and SOC home lab built to develop and document Windows security monitoring, Wazuh detection engineering, alert investigation, and evidence-based reporting.
 
-> **Current Status: Foundation / Planned Deployment**
+> **Current status: Core infrastructure and telemetry operational / Detection validation is next**
 >
-> The repository structure and target design are complete. Infrastructure deployment and validation have not started; no operational results are claimed.
+> VMware Workstation, OPNsense, Active Directory, DNS, Wazuh 4.14.7, and Windows event collection are implemented and validated. Custom detections, a complete SOC investigation, MITRE ATT&CK mapping, and an incident report remain planned for NCDL v1.
 
-![Planned NCDL logical architecture](assets/diagrams/ncdl-logical-architecture.svg)
+![NCDL v1 logical architecture](assets/diagrams/ncdl-logical-architecture.svg)
 
-## What this project demonstrates
+## Implemented Capabilities
 
-- Designing segmented enterprise networks with explicit trust boundaries
-- Engineering telemetry across identity, endpoint, firewall, and network sources
-- Building and validating SIEM detections mapped to MITRE ATT&CK
-- Investigating alerts with reproducible queries, timelines, and source evidence
-- Using endpoint and network data for threat hunting and DFIR
-- Running controlled adversary simulations inside an isolated lab boundary
-- Communicating technical findings through analyst notes and incident reports
+- Isolated VMware-based lab networking with OPNsense
+- Windows Server 2022 Active Directory Domain Services and DNS
+- Group Policy and Windows security auditing
+- Wazuh 4.14.7 centralized security monitoring
+- Active Wazuh agent on `NCDL-DC01`
+- Windows security telemetry ingestion
+- Visibility into process creation, authentication/logon activity, and Security Configuration Assessment findings
+- Restricted administrative access to the Wazuh Dashboard through OPNsense
 
-## Planned technology stack
+## NCDL v1 Next Deliverables
 
-| Layer | Technologies under evaluation or planned |
+- Controlled generation of security-relevant activity
+- Custom Wazuh detection development and validation
+- SOC alert triage and investigation
+- MITRE ATT&CK mapping based on validated behavior
+- One complete evidence-backed investigation
+- One sanitized incident-style report
+
+## Technology stack
+
+| Layer | Current implementation |
 |---|---|
-| Network and segmentation | OPNsense or pfSense, VLANs, default-deny inter-VLAN policy |
-| Identity and workloads | Active Directory Domain Services, DNS, Windows endpoints, Linux endpoint |
-| SIEM and endpoint visibility | Splunk and/or Elastic, Wazuh, Velociraptor |
-| Network security monitoring | Zeek, Suricata |
-| Validation environment | Isolated Kali Linux host; controlled lab activity only |
-| Analysis framework | MITRE ATT&CK, evidence-linked SOC workflow |
+| Hypervisor | VMware Workstation |
+| Firewall and routing | OPNsense; WAN through VMware NAT; LAN `10.10.10.1/24` |
+| Identity and auditing | `NCDL-DC01`; Windows Server 2022; AD DS, DNS, Group Policy, and Windows security auditing; `10.10.10.10` |
+| Security monitoring | `NCDL-SIEM01`; Ubuntu Server 24.04 LTS; Wazuh 4.14.7 all-in-one; `10.10.10.20` |
+| Endpoint telemetry | Wazuh agent 001 on `NCDL-DC01`, active and communicating |
+| Analyst access | Windows 11 host through a restricted OPNsense Destination NAT/firewall rule |
 
-Tool selection and proposed addressing remain design decisions until deployment testing is complete.
+## NCDL v1 architecture
 
-## Architecture overview
+The current lab uses one isolated `10.10.10.0/24` LAN behind OPNsense. The domain controller sends Windows security telemetry to the Wazuh all-in-one server. The Windows 11 host is not directly attached to NCDL-LAN; dashboard access crosses a restricted OPNsense Destination NAT/firewall rule.
 
-The planned environment places identity, user, Linux, security, sensor, management, and adversary systems in separate network segments behind a firewall. Host and network telemetry flows to central analysis tooling. Administrative access is restricted to a management path, and the Kali segment is denied by default except for temporary, scoped validation rules.
+See [Architecture](docs/ARCHITECTURE.md) for component and telemetry detail, and [Network Design](docs/NETWORK-DESIGN.md) for the implemented addressing and access path.
 
-Technical detail: [Architecture](docs/ARCHITECTURE.md) | [Network design](docs/NETWORK-DESIGN.md) | [Roadmap](docs/ROADMAP.md)
+## Project status
 
-## Project progress
-
-| Workstream | Status | Evidence required to advance |
-|---|---|---|
-| Repository foundation | Complete | Documentation and version-controlled structure |
-| Network and firewall | Planned | Sanitized rules, reachability tests, sensor visibility |
-| AD DS, DNS, and endpoints | Planned | Configuration validation and asset inventory |
-| SIEM, EDR, and NSM telemetry | Planned | Source-by-source ingestion and parsing checks |
-| Detection engineering | Planned | Versioned analytics with reproducible validation |
-| Investigations and DFIR | Planned | Queries, timelines, source evidence, and findings |
-| Controlled simulations | Planned | Approved plan, isolation checks, observations, and cleanup record |
-
-"Complete" above applies only to the repository foundation, not to lab deployment.
-
-## Project navigation
-
-| Section | Contents |
+| Workstream | Status |
 |---|---|
-| [Architecture](docs/ARCHITECTURE.md) | Trust boundaries, telemetry flow, SOC workflow, and ATT&CK strategy |
-| [Network design](docs/NETWORK-DESIGN.md) | Planned VLANs, traffic policy, sensor placement, and validation criteria |
-| [Roadmap](docs/ROADMAP.md) | Evidence-gated deployment phases |
-| [Detections](detections/README.md) | Detection logic, test records, and ATT&CK mappings |
-| [Investigations](investigations/README.md) | SOC case notes, hunting records, queries, and timelines |
-| [Incident reports](incident-reports/README.md) | Evidence-supported incident-style reporting |
-| [Attack simulations](attack-simulations/README.md) | Authorized validation plans and safety controls |
-| [Evidence](evidence/README.md) | Raw artifacts, exports, integrity data, and screenshots |
-| [Configurations](configs/README.md) | Sanitized defensive configurations and deployment notes |
+| VMware Workstation lab and OPNsense routing | **Completed** |
+| AD DS and DNS on `NCDL-DC01` | **Completed** |
+| Wazuh 4.14.7 all-in-one deployment | **Completed** |
+| Wazuh agent enrollment and Windows telemetry ingestion | **Completed** |
+| Controlled generation and analysis of security-relevant activity | **Planned for NCDL v1 (next)** |
+| Custom Wazuh detection engineering and validation | **Planned for NCDL v1** |
+| End-to-end SOC investigation and ATT&CK mapping | **Planned for NCDL v1** |
+| Sanitized incident-style report with supporting evidence | **Planned for NCDL v1** |
+| Additional SIEM, NSM, DFIR tooling, or network segmentation | **Optional future enhancement** |
+
+"Completed" reflects only the implementation and validation facts stated in this repository. It does not imply that unfinished detections, investigations, or reporting exist.
+
+## Repository guide
+
+| Section | Purpose |
+|---|---|
+| [Architecture](docs/ARCHITECTURE.md) | Current components, access paths, and telemetry flow |
+| [Network design](docs/NETWORK-DESIGN.md) | Current subnet, addressing, VMware NAT, and firewall access |
+| [Roadmap](docs/ROADMAP.md) | Completed foundation and remaining v1 work |
+| [Detections](detections/README.md) | Future custom Wazuh rules and validation records |
+| [Investigations](investigations/README.md) | Future SOC case notes, queries, timelines, and conclusions |
+| [Attack simulations](attack-simulations/README.md) | Controlled event-generation scope and safeguards |
+| [Incident reports](incident-reports/README.md) | Future sanitized incident-style report |
+| [Evidence](evidence/README.md) | Standards for supporting artifacts |
+| [Configurations](configs/README.md) | Future sanitized defensive configuration records |
 
 ## Evidence integrity
 
-Only artifacts captured from actual, validated lab activity will be presented as evidence. Screenshots, logs, alerts, findings, and test results will remain absent until produced; published artifacts will record source, time, method, redactions, and limitations. See the [evidence standard](docs/ARCHITECTURE.md#evidence-standards).
+No screenshot, alert, detection, investigation, or report is claimed unless it was produced by actual NCDL activity and stored with enough context to evaluate it. Repository evidence will identify its source, time, method, redactions, and limitations. No screenshots or raw evidence have been added yet.
 
-## Scope
+## Scope and safety
 
-All simulations will be limited to owned, isolated lab systems. This repository will not contain malware, credentials, persistence tooling, or executable offensive scripts.
+Security-relevant activity will be generated only in the controlled lab and only to validate defensive telemetry and detections. This repository will not contain malware, credentials, persistence tooling, or executable offensive scripts.
+
+Splunk, Elastic, Zeek, Suricata, Velociraptor, Linux endpoints, and additional VLANs are not required for NCDL v1. They may be evaluated later only if they add a clear defensive learning objective.
 
 Licensed under the [MIT License](LICENSE).

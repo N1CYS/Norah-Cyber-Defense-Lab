@@ -1,171 +1,114 @@
 # Architecture
 
-**Status: Planned design - not deployed**
+**Status: Core NCDL v1 infrastructure implemented and validated**
 
-This document records the target architecture and the controls that must be validated before the lab is described as operational.
+This document describes the lab as it exists now and separates operational components from unfinished SOC work.
 
-## Design goals
-
-- Model enterprise trust boundaries at home-lab scale.
-- Collect complementary identity, endpoint, DNS, firewall, and network telemetry.
-- Keep security tooling and administrative access separated from user workloads.
-- Make detections and investigations reproducible.
-- Contain adversary simulation within an explicitly isolated environment.
-
-## Logical architecture
-
-```mermaid
-flowchart TB
-    EXT((Internet)) --> EDGE["OPNsense / pfSense<br/>NAT, firewall, VPN, inter-VLAN routing"]
-
-    subgraph LAB["NCDL segmented lab"]
-        direction LR
-        subgraph IDZ["Identity VLAN"]
-            DC["Windows Server<br/>AD DS and DNS"]
-        end
-        subgraph USR["User VLAN"]
-            WIN["Windows endpoints"]
-            LNX["Linux endpoint"]
-        end
-        subgraph MON["Sensor segment"]
-            ZEEK["Zeek"]
-            SURI["Suricata"]
-        end
-        subgraph SOC["Security VLAN"]
-            SIEM["Splunk and/or Elastic"]
-            WAZ["Wazuh"]
-            VELO["Velociraptor"]
-        end
-        subgraph ADM["Management VLAN"]
-            JUMP["Administrative workstation / jump host"]
-        end
-        subgraph RED["Isolated adversary VLAN"]
-            KALI["Kali Linux<br/>controlled validation only"]
-        end
-    end
-
-    EDGE --> DC
-    EDGE --> WIN
-    EDGE --> LNX
-    EDGE --> SIEM
-    EDGE --> JUMP
-    EDGE -. "temporary scoped firewall rule" .-> KALI
-    DC -->|"Windows events, authentication, DNS"| SIEM
-    WIN -->|"Windows and EDR telemetry"| WAZ
-    LNX -->|"Linux audit and host telemetry"| WAZ
-    WAZ -->|"normalized host alerts"| SIEM
-    WIN -->|"forensic collection"| VELO
-    LNX -->|"forensic collection"| VELO
-    ZEEK -->|"network metadata"| SIEM
-    SURI -->|"IDS alerts and flow context"| SIEM
-    EDGE -. "mirrored traffic / TAP" .-> ZEEK
-    EDGE -. "mirrored traffic / TAP" .-> SURI
-    JUMP -->|"restricted administration"| DC
-    JUMP -->|"restricted administration"| SOC
-    KALI -. "authorized test traffic" .-> USR
-    KALI -. "authorized test traffic" .-> IDZ
-```
-
-The SIEM will be selected after resource testing. If both Splunk and Elastic are used, each must have a distinct use case.
-
-## Trust boundaries
-
-| Zone | Primary assets | Security intent |
-|---|---|---|
-| Identity | Domain controllers and DNS | Most restricted workload tier; only required client and management traffic |
-| User | Windows and Linux endpoints | Representative monitored workloads; no direct administrative path to security tooling |
-| Security | SIEM, Wazuh, Velociraptor | Central collection and analysis; restricted ingestion and analyst access |
-| Sensor | Zeek and Suricata | Receives mirrored traffic; management allowed only from the management VLAN |
-| Management | Jump host and administration services | Dedicated privileged access path with logging and limited egress |
-| Adversary | Kali Linux | Default-deny boundary; temporary, documented access only during approved exercises |
-
-Addressing and proposed policy are defined in [Network Design](NETWORK-DESIGN.md).
-
-## Telemetry flow
+## Current logical architecture
 
 ```mermaid
 flowchart LR
-    SOURCES["Identity, endpoint, DNS,<br/>firewall, Zeek, Suricata"] --> COLLECT["Native agents, Wazuh,<br/>forwarders, and syslog"]
-    COLLECT --> STORE["Splunk and/or Elastic<br/>indexed security data"]
-    STORE --> DETECT["Versioned detection logic<br/>with ATT&CK mapping"]
-    DETECT --> TRIAGE["SOC triage and scoping"]
-    TRIAGE --> HUNT["Cross-source investigation<br/>and Velociraptor collection"]
-    HUNT --> REPORT["Evidence, timeline,<br/>findings, and improvements"]
-    REPORT --> DETECT
+    HOST["Windows 11 host<br/>Analyst browser"]
+    NAT["VMware NAT<br/>OPNsense WAN"]
+    FW["OPNsense<br/>Firewall / router<br/>LAN: 10.10.10.1/24"]
+
+    subgraph LAN["NCDL LAN · 10.10.10.0/24"]
+        DC["NCDL-DC01<br/>Windows Server 2022<br/>AD DS · DNS · Group Policy<br/>Wazuh agent 001 · 10.10.10.10"]
+        SIEM["NCDL-SIEM01<br/>Ubuntu Server 24.04 LTS<br/>Wazuh 4.14.7 all-in-one<br/>10.10.10.20"]
+    end
+
+    NAT --> FW
+    FW --> LAN
+    DC -->|"Windows security telemetry"| SIEM
+    HOST -. "restricted Destination NAT / firewall rule<br/>dashboard administration" .-> FW
+    FW -.-> SIEM
 ```
 
-Planned minimum telemetry includes:
+The Windows 11 host is not directly attached to the NCDL LAN. Administrative access to the Wazuh Dashboard is provided through a restricted OPNsense Destination NAT and firewall rule.
 
-| Source | Planned data | Defensive value |
+## Implemented components
+
+| Component | Role | Validated state |
 |---|---|---|
-| Active Directory | Security events, authentication, group and account changes | Identity misuse and privilege-change analysis |
-| Windows endpoints | Process, logon, PowerShell, service, persistence, and network events | Endpoint detection and timeline reconstruction |
-| Linux endpoint | Authentication, process, audit, and network events | Cross-platform host monitoring |
-| OPNsense/pfSense | Firewall, DHCP, VPN, and DNS-related logs where applicable | Boundary and connection context |
-| Zeek | Connection, DNS, HTTP, TLS, and protocol metadata | Network behavior and pivoting context |
-| Suricata | IDS alerts and flow records | Signature-based alerting and packet-level context |
-| Wazuh | Agent events, file integrity, and normalized alerts | Host monitoring and alert enrichment |
-| Velociraptor | Targeted artifacts collected during approved investigations | DFIR acquisition and endpoint scoping |
+| VMware Workstation | Hypervisor and virtual networking | In use |
+| OPNsense | Firewall and router between VMware NAT and the lab LAN | Deployed; LAN `10.10.10.1/24` |
+| `NCDL-DC01` | Domain controller, DNS server, Group Policy source, and monitored Windows system | Windows Server 2022 at `10.10.10.10`; AD DS, DNS, Group Policy, and Windows security auditing implemented |
+| `NCDL-SIEM01` | Central Wazuh server | Ubuntu Server 24.04 LTS at `10.10.10.20`; Manager, Indexer, and Dashboard operational |
+| Wazuh agent 001 | Windows telemetry collection on `NCDL-DC01` | Active and communicating with `NCDL-SIEM01` |
+| Windows 11 host | Analyst access to Wazuh Dashboard | Access provided through the restricted OPNsense rule |
 
-Retention, time synchronization, parsing health, and host identity consistency will be validated before analytics are treated as reliable.
-
-## SOC investigation workflow
+## Current telemetry flow
 
 ```mermaid
-flowchart TD
-    A["Alert or hunt hypothesis"] --> B["Validate source, time, rule, and asset context"]
-    B --> C{"Credible signal?"}
-    C -->|No| D["Document rationale and tune if appropriate"]
-    C -->|Yes| E["Preserve original evidence and define scope"]
-    E --> F["Correlate identity, endpoint, DNS, firewall, and NSM data"]
-    F --> G["Build timeline and test competing hypotheses"]
-    G --> H{"Finding supported?"}
-    H -->|Insufficient| I["Record gaps and request targeted collection"]
-    I --> F
-    H -->|Yes| J["Map behavior to ATT&CK and assess impact"]
-    J --> K["Write report, containment recommendations, and detection improvements"]
-    K --> L["Peer/self-review against evidence standard"]
+flowchart LR
+    WIN["NCDL-DC01<br/>Windows Security events and SCA data"]
+    AGENT["Wazuh agent 001<br/>Active"]
+    MANAGER["Wazuh Manager"]
+    INDEXER["Wazuh Indexer"]
+    DASH["Wazuh Dashboard"]
+    ANALYST["Windows 11 host<br/>restricted browser access"]
+
+    WIN --> AGENT --> MANAGER --> INDEXER --> DASH
+    ANALYST -. "OPNsense Destination NAT / firewall rule" .-> DASH
 ```
 
-An investigation must distinguish observation from inference. Queries, time ranges, source systems, and relevant identifiers should be recorded so another analyst can reproduce the work.
+Wazuh currently displays:
 
-## MITRE ATT&CK alignment strategy
+- Windows process creation events;
+- authentication and logon/logoff events;
+- Security Configuration Assessment findings.
 
-ATT&CK will be used as a behavioral index, not as a scorecard. Each detection, simulation plan, and supported finding should include:
+This confirms collection and visibility for these data categories. It does not claim custom detection coverage, alert quality, investigation results, or ATT&CK coverage.
 
-- ATT&CK version and technique or sub-technique identifier;
-- the observable behavior and required telemetry;
-- analytic assumptions and known blind spots;
-- validation method and expected artifacts;
-- links to the related detection, investigation, evidence, and report.
+## NCDL v1 SOC workflow
 
-Coverage will only be claimed when a versioned analytic has been executed against an authorized test or representative dataset and the result is preserved. Technique counts alone will not be presented as proof of defensive effectiveness.
+The remaining work will use the deployed telemetry path:
+
+```mermaid
+flowchart LR
+    A["Generate controlled lab activity"] --> B["Review Wazuh telemetry and alerts"]
+    B --> C["Create and validate custom detection"]
+    C --> D["Scope and investigate activity"]
+    D --> E["Map validated behavior to ATT&CK"]
+    E --> F["Publish sanitized evidence and incident report"]
+```
+
+These steps are **planned for NCDL v1**. None is complete unless the corresponding artifact and evidence are added to the repository.
+
+## Investigation standard
+
+The planned end-to-end investigation will record:
+
+1. The controlled activity and expected telemetry.
+2. Alert or event source, rule, host, timestamp, and time zone.
+3. Exact Wazuh filters or queries used for scoping.
+4. A timeline separating observations from analyst inference.
+5. The validated ATT&CK technique or sub-technique, if supported.
+6. Detection limitations, alternative explanations, and telemetry gaps.
+7. Links to sanitized source evidence and the incident report.
+
+## MITRE ATT&CK use
+
+ATT&CK mappings will be added only after behavior is generated, observed, and validated. A mapping must identify the ATT&CK version, technique or sub-technique, supporting telemetry, analytic assumptions, and validation method. Technique counts will not be used as a substitute for tested coverage.
 
 ## Evidence standards
 
-Each completed activity must link to versioned source artifacts and record:
+Each completed activity must record:
 
 1. Purpose and scope.
-2. Capture date, timezone, lab phase, asset role, and data-source version.
+2. Capture date, timezone, asset, and software version.
 3. Exact query, collection method, or configuration reference.
 4. Expected and observed results, recorded separately.
-5. Relevant raw evidence or exports, sanitized for secrets and personal data.
-6. SHA-256 hashes for material exported artifacts where practical.
-7. Limitations, alternative explanations, and telemetry gaps.
-8. Links to associated detections, investigations, simulations, and reports.
+5. Sanitized source artifacts or exports.
+6. SHA-256 hashes for material exports where practical.
+7. Redactions, limitations, and telemetry gaps.
+8. Links between the detection, investigation, evidence, and report.
 
-File names should use `YYYY-MM-DD_short-description` and UTC timestamps should be preferred inside investigations. Redaction must be declared; artifacts must never be edited in a way that changes their security meaning. See the [`evidence/` guide](../evidence/README.md).
+Use `YYYY-MM-DD_short-description` for evidence names and prefer UTC timestamps in investigations. No evidence should be reconstructed for presentation. See the [`evidence/` guide](../evidence/README.md).
 
-## Architectural decisions still open
+## Optional future enhancements
 
-- Hypervisor and available compute capacity
-- OPNsense versus pfSense
-- Splunk, Elastic, or a deliberately scoped combination
-- Endpoint telemetry configuration and retention periods
-- Virtual traffic-mirroring method for Zeek and Suricata
-- Internal naming convention and final IP ranges
-
-These decisions will be recorded with rationale during the relevant [roadmap](ROADMAP.md) phase.
+Additional VLANs, Splunk, Elastic, Zeek, Suricata, Velociraptor, Linux endpoints, and a dedicated adversary environment are outside NCDL v1. They are optional future enhancements, not current dependencies or implemented components.
 
 ## Related documents
 

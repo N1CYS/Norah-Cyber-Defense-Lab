@@ -1,76 +1,47 @@
 # Network Design
 
-**Status: Planned design - subnets and VLANs are not deployed**
+**Status: Implemented for NCDL v1**
 
-The table below is a proposed segmentation model and example private addressing scheme. Final allocations depend on the selected hypervisor and firewall.
+NCDL currently uses a single lab LAN behind OPNsense. Multiple VLANs are not required or implemented for v1.
 
-## Segmentation plan
+## Current network
 
-| VLAN | Name | Example subnet | Planned assets | Default posture |
-|---:|---|---|---|---|
-| 10 | Management | `10.10.10.0/24` | Jump host, hypervisor management | Deny inbound from other workload VLANs |
-| 20 | Identity | `10.10.20.0/24` | AD DS and DNS | Permit only required domain, DNS, telemetry, and management flows |
-| 30 | Users | `10.10.30.0/24` | Windows endpoints | Permit required identity, DNS, telemetry, and controlled egress |
-| 40 | Linux | `10.10.40.0/24` | Linux endpoint | Permit required DNS, telemetry, and controlled egress |
-| 50 | Security | `10.10.50.0/24` | SIEM, Wazuh, Velociraptor | Accept defined ingestion; analyst access from management only |
-| 60 | Sensors | `10.10.60.0/24` | Zeek and Suricata management interfaces | No transit routing; management and log export only |
-| 90 | Adversary | `10.10.90.0/24` | Kali Linux | Isolated by default; temporary exercise-specific rules |
+| Network or interface | Addressing | Purpose | Status |
+|---|---|---|---|
+| OPNsense WAN | VMware NAT | Upstream connectivity through VMware Workstation | **Completed** |
+| OPNsense LAN | `10.10.10.1/24` | Default gateway for the NCDL LAN | **Completed** |
+| NCDL LAN | `10.10.10.0/24` | Isolated network containing the domain controller and Wazuh server | **Completed** |
 
-These ranges are examples. Planned servers will use static addresses or reservations; endpoints will use lab DHCP where appropriate.
+## Current systems
 
-## Traffic policy
+| Host | Operating system | Address | Role | Status |
+|---|---|---|---|---|
+| `NCDL-DC01` | Windows Server 2022 | `10.10.10.10` static | AD DS, DNS, Group Policy, Windows security auditing, Wazuh agent 001 | **Operational** |
+| `NCDL-SIEM01` | Ubuntu Server 24.04 LTS | `10.10.10.20` static | Wazuh Manager, Indexer, and Dashboard | **Operational** |
 
-OPNsense or pfSense will route between VLANs and enforce a default-deny inter-VLAN policy. Rules will be specific by source, destination, port, and purpose.
+## Traffic and access paths
 
-| Source | Destination | Planned allowance |
-|---|---|---|
-| User/Linux | Identity | DNS, Kerberos, LDAP/LDAPS, SMB, NTP, and other documented domain dependencies |
-| Monitored hosts | Security | Agent, forwarder, syslog, and forensic-control traffic on defined ports |
-| Sensors | Security | Zeek/Suricata log export and health monitoring |
-| Management | Infrastructure | Restricted administrative protocols from the jump host |
-| Adversary | Lab target | Disabled by default; narrow source/destination/time window per exercise |
-| Any lab VLAN | Management | Denied unless an explicit administrative dependency is documented |
-| Lab egress | Internet | Updates and approved dependencies; logged and restricted where practical |
+| Source | Destination | Purpose | Current state |
+|---|---|---|---|
+| `NCDL-DC01` | `NCDL-SIEM01` | Wazuh agent communication and Windows security telemetry | **Validated** |
+| Windows 11 host | Wazuh Dashboard on `NCDL-SIEM01` | Administrative browser access through OPNsense Destination NAT/firewall rule | **Validated and restricted** |
+| OPNsense WAN | VMware NAT | Upstream network path | **Implemented** |
 
-Domain-controller internet access will be minimized. DNS recursion, forwarding, and egress behavior will be explicitly documented after deployment.
+The Windows 11 host is not directly connected to `10.10.10.0/24`. Dashboard access depends on the restricted OPNsense rule rather than broad host access to the lab LAN.
 
-## Sensor placement
+## Security design
 
-Zeek and Suricata are planned to receive mirrored virtual-switch or firewall traffic through a dedicated monitoring interface. Their management interfaces will remain in the sensor segment. The capture interface should not have a routable IP address. Visibility tests will verify which east-west and north-south paths are actually observed before network coverage is claimed.
+- OPNsense is the network boundary and router for the lab.
+- Server addresses are static to keep identity and telemetry paths stable.
+- Administrative dashboard access is restricted through an explicit firewall/NAT path.
+- The current single-subnet design is intentionally small enough to operate, observe, and document accurately.
+- Any future rule or topology change must be documented before broader access is claimed.
 
-## Adversary isolation
+No claim is made here about unlisted firewall rules, ports, DNS forwarding behavior, time synchronization, configuration backups, or formal segmentation tests.
 
-The Kali host will have no standing route to the management VLAN, hypervisor administration, or non-lab private networks. Exercise access will require:
+## Optional future segmentation
 
-1. a documented target and expected telemetry;
-2. a snapshot or recovery point where appropriate;
-3. a temporary firewall rule limited to the required path;
-4. monitoring enabled before execution;
-5. removal and verification of the rule after the exercise.
-
-No uncontrolled bridging or shared clipboard/file transfer is assumed. Internet access will be disabled during exercises unless a specific, safe dependency is documented.
-
-## Foundational controls
-
-- Central NTP with timezone-aware event handling
-- Internal DNS through AD-integrated DNS where appropriate
-- Unique administrative and standard-user accounts
-- Host firewall enabled on endpoints
-- Central log transport protected and access-controlled
-- Configuration backups for firewall and critical security services
-- Asset inventory mapping hostname, IP, role, owner, and telemetry status
-- Health checks for collection gaps, clock drift, and parser failures
-
-## Validation criteria
-
-Segmentation is only considered implemented after evidence shows:
-
-- allowed flows succeed and denied flows fail;
-- the adversary VLAN cannot reach management services;
-- sensors observe the intended traffic paths;
-- firewall events arrive in the selected analytics platform;
-- DNS and time synchronization work consistently across the domain;
-- rule exports and sanitized test results are stored under [`configs/`](../configs/README.md) and [`evidence/`](../evidence/README.md).
+Dedicated management, sensor, adversary, or workload VLANs may be considered after NCDL v1. They are not needed for the current goals and are not implemented.
 
 ## Related documents
 
