@@ -19,6 +19,9 @@
     <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L0,6 L9,3 z" fill="#61d69b"/>
     </marker>
+    <marker id="arrow-amber" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#f1b65c"/>
+    </marker>
     <style>
       .heading { font: 700 30px Inter, Segoe UI, Arial, sans-serif; fill: #f3f7fb; }
       .subheading { font: 400 15px Inter, Segoe UI, Arial, sans-serif; fill: #9fb0c3; }
@@ -31,7 +34,7 @@
       .lan { fill: #0b1828; stroke: #31516b; stroke-width: 1.5; stroke-dasharray: 8 6; }
       .flow { fill: none; stroke: #58c9da; stroke-width: 2.3; marker-end: url(#arrow); }
       .telemetry { fill: none; stroke: #61d69b; stroke-width: 2.5; marker-end: url(#arrow-green); }
-      .restricted { fill: none; stroke: #f1b65c; stroke-width: 2.3; stroke-dasharray: 8 6; marker-end: url(#arrow); }
+      .restricted { fill: none; stroke: #f1b65c; stroke-width: 2.3; stroke-dasharray: 8 6; marker-end: url(#arrow-amber); }
     </style>
   </defs>
 
@@ -46,7 +49,8 @@
   <text x="80" y="209" class="label">ANALYST ACCESS</text>
   <text x="80" y="247" class="title">Windows 11 Host</text>
   <text x="80" y="275" class="body">Wazuh Dashboard browser</text>
-  <text x="80" y="298" class="small">NOT ATTACHED TO LAB LAN</text>
+  <text x="80" y="296" class="small">NOT ATTACHED TO NCDL LAN</text>
+  <text x="80" y="312" class="small">NO DIRECT ACCESS TO NCDL-SIEM01</text>
 
   <rect x="54" y="402" width="250" height="130" rx="14" class="panel" filter="url(#shadow)"/>
   <text x="80" y="435" class="label">UPSTREAM NETWORK</text>
@@ -78,9 +82,10 @@
   <text x="1080" y="331" class="body">Ubuntu Server 24.04 LTS</text>
   <text x="1080" y="358" class="body">Wazuh 4.14.7 all-in-one</text>
   <path d="M1080 379 H1278" stroke="#2b465f"/>
-  <text x="1080" y="407" class="body">Manager · Indexer · Dashboard</text>
-  <text x="1080" y="435" class="body">Operational</text>
-  <text x="1080" y="466" class="small">STATIC · 10.10.10.20</text>
+  <text x="1080" y="404" class="body">Manager · Indexer</text>
+  <text x="1080" y="429" class="body">Dashboard · HTTPS/443</text>
+  <text x="1080" y="454" class="body">Operational</text>
+  <text x="1080" y="478" class="small">STATIC · 10.10.10.20</text>
 
   <path d="M304 465 C340 465 340 392 380 392" class="flow"/>
   <path d="M640 366 H718" class="flow"/>
@@ -88,12 +93,13 @@
   <text x="1032" y="344" text-anchor="middle" class="small" fill="#79dfa9">TELEMETRY</text>
   <path d="M304 247 C342 247 342 330 380 330" class="restricted"/>
   <path d="M640 330 C681 330 681 215 1054 215 C1178 215 1178 230 1178 230" class="restricted"/>
-  <text x="512" y="244" text-anchor="middle" class="small" fill="#f1c97f">RESTRICTED DASHBOARD ACCESS</text>
+  <text x="342" y="269" text-anchor="middle" class="small" fill="#f1c97f">OPNsense WAN</text>
+  <text x="805" y="204" text-anchor="middle" class="small" fill="#f1c97f">DESTINATION NAT + FIREWALL · HTTPS/443 TO WAZUH DASHBOARD</text>
 
   <rect x="54" y="627" width="1292" height="52" rx="10" fill="#0c1827" stroke="#223b52"/>
   <line x1="85" y1="653" x2="135" y2="653" class="telemetry"/>
   <text x="151" y="658" class="body">Validated Windows telemetry path</text>
   <line x1="399" y1="653" x2="449" y2="653" class="restricted"/>
-  <text x="465" y="658" class="body">Restricted Destination NAT / firewall path</text>
+  <text x="465" y="658" class="body">Windows 11 → OPNsense WAN → Destination NAT / firewall → Dashboard HTTPS/443</text>
   <text x="1315" y="658" text-anchor="end" class="small">NO CUSTOM DETECTION OR INVESTIGATION CLAIM</text>
 </svg>
